@@ -28,6 +28,11 @@ class ScoutPoss(discord.ui.View):
         super().__init__()
         self.timeout = None
         self.add_item(ScoutButton(label='1', style=discord.ButtonStyle.green, row=0))
+        self.add_item(ScoutButton(label='2', style=discord.ButtonStyle.green, row=0))
+        self.add_item(ScoutButton(label='3', style=discord.ButtonStyle.green, row=0))
+        self.add_item(ScoutButton(label='4', style=discord.ButtonStyle.green, row=0))
+        self.add_item(ScoutButton(label='5', style=discord.ButtonStyle.green, row=1))
+        self.add_item(ScoutButton(label='6', style=discord.ButtonStyle.green, row=1))
 
 class ScoutButton(discord.ui.Button):
     def __init__(self, style=discord.ButtonStyle.green, label='1', row=1):

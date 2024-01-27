@@ -5,9 +5,9 @@ def getConnection():
     return sqlite3.connect("matchData.db")
 
 def getBotToScout(matchKey, scoutNumber):
-    with getConnection() as conn:
-        with conn as cur:
-            print(cur.execute(f"SELECT COUNT(MatchKey) FROM matches WHERE MatchKey = '{matchKey}'"))
+    #with getConnection() as conn:
+    #    with conn as cur:
+    #        print(cur.execute(f"SELECT COUNT(MatchKey) FROM matches WHERE MatchKey = '{matchKey}'"))
     return "5413 (Red)"
 
 def getMostRecentMatchNumber():

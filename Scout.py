@@ -28,8 +28,8 @@ class EventSel(discord.ui.View):
     def __init__(self, team='frc5413'):
         super().__init__()
         self.timeout = None
-        events = [discord.SelectOption(label=f"{event['year']} {event['short_name']}", value=event['key']) for event in tba.team_events(team)]
-        self.children[0].options = events[-25:len(events)-1]
+        eventOptions = [discord.SelectOption(label=f"{event['year']} {event['short_name']}", value=event['key']) for event in tba.team_events(team)[:-25:-1]]
+        self.children[0].options = eventOptions
     @discord.ui.select(options=[])
     async def sel(self, interaction: discord.Interaction, select: discord.ui.Select):
         global event 

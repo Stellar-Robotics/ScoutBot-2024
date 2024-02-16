@@ -9,7 +9,15 @@ def getBotToScout(matchKey, scoutNumber):
     #with getConnection() as conn:
     #    with conn as cur:
     #        print(cur.execute(f"SELECT COUNT(MatchKey) FROM matches WHERE MatchKey = '{matchKey}'"))
-    return "5413 (Red)"
+    tba = tbapy.TBA(tbaKey)
+    match = tba.match(matchKey)
+    compKey = match["event_key"]
+    assignments = getMatchAssignments(competitionKey=compKey)
+    matchAssignments : dict = assignments[matchKey]
+    team = iter({key for key in matchAssignments if matchAssignments[key]==scoutNumber}).__next__()
+    alliance = getAlliance(teamKey=team, matchKey=matchKey)
+    teamNum = str.replace(team,"frc","")
+    return f"{teamNum} ({alliance})"
 
 def getMostRecentMatchNumber():
     return 5
@@ -19,6 +27,16 @@ def writeScoutData(matchKey, scoutNumber, data):
 
 def getScoutedMatches(teamKey):
     pass
+
+def getAlliance(teamKey, matchKey):
+    tba = tbapy.TBA(tbaKey)
+    match = tba.match(matchKey)
+    for team in match["alliances"]["red"]["team_keys"]:
+        if team == teamKey:
+            return "Red"
+    for team in match["alliances"]["blue"]["team_keys"]:
+        if team == teamKey:
+            return "Blue"
 
 def getMatchAssignments(competitionKey):
     # Commented code is most likely debug code

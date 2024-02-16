@@ -19,6 +19,8 @@ def writeScoutData(matchKey, scoutNumber, data):
 def getScoutedMatches(teamKey):
     pass
 
+def getMatchAssignments(competitionKey):
+    
 
 if __name__ == "__main__":
     getBotToScout("2022isde1_qm1", 1)

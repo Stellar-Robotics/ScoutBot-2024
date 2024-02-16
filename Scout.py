@@ -9,9 +9,21 @@ import backend
 from enum import Enum
 
 # class syntax
-class TIType(Enum):
-    Comment = 1
-    Defense = 2
+class InType(Enum):
+    AutoSpeakerNotes = 1
+    AutoAmpNotes = 2
+    AutoTrapNotes = 3
+    CrossedLine = 4
+    TeleopSpeakerNotes = 5
+    TeleopAmpNotes = 6
+    ClimbedWith = 7
+    TeleopTrapNotes = 8
+    DidDefend = 9
+    WasDisabled = 10
+    Comments = 11
+    ScoutName = 12
+    MatchKey = 13
+    ScoutNumber = 14
 
 
 tba = tbapy.TBA(tbaKey)
@@ -60,7 +72,7 @@ class ScoutButton(discord.ui.Button):
         await interaction.response.defer(ephemeral=True, thinking=True)
         global event
         match_list = sorted([(match['match_number'], match['key']) for match in tba.event_matches(event) if match['comp_level'] == 'qm'])
-        pprint(match_list)
+        #pprint(match_list)
         lastScouted = backend.getMostRecentMatchNumber()
         options = [discord.SelectOption(label=f'Qual {match[0]}', value=match[1], default=(match[0] == lastScouted)) for match in match_list[max(0, lastScouted-5):min(len(match_list),lastScouted+20)]]
         
@@ -71,18 +83,22 @@ class ScoutButton(discord.ui.Button):
         Matches = []
         await thread.send(f'Hi {user.nick}!\nyou are scouting {target} in', view=Dropdown(options=options))
         await thread.send(f'# __Auto__')
-        await thread.send(f'SpeakerNotes', view=Spinner())
-        await thread.send(f'AmpNotes', view=Spinner())
-        await thread.send(f'TrapNotes', view=Spinner())
-        await thread.send(f'CrossedLine', view=BoolButton())
+        await thread.send(f'**SpeakerNotes**', view=Spinner(InType.AutoSpeakerNotes))
+        await thread.send(f'**AmpNotes**', view=Spinner(InType.AutoAmpNotes))
+        await thread.send(f'**TrapNotes**', view=Spinner(InType.AutoTrapNotes))
+        await thread.send(f'**CrossedLine**', view=BoolButton())
         await thread.send(f'# __Teleop__')
-        await thread.send(f'SpeakerNotes', view=Spinner())
-        await thread.send(f'AmpNotes', view=Spinner())
-        await thread.send(f'TrapNotes', view=Spinner())
+        await thread.send(f'**SpeakerNotes**', view=Spinner(InType.TeleopSpeakerNotes))
+        await thread.send(f'**AmpNotes**', view=Spinner(InType.TeleopAmpNotes))
+        await thread.send(f'**Prioritized Amplified Speaker**', view=BoolButton())
         await thread.send(f'# __EndGame__')
-        await thread.send(f'Climbs on same chain', view=Spinner())
-        await thread.send(f'TrapNotes', view=Spinner())
-        await thread.send(f'Additional Comments', view=Comments())
+        await thread.send(f'**Climbs on same chain**', view=Spinner(InType.ClimbedWith))
+        climbOptions = [discord.SelectOption(label='No Climb',value=0), discord.SelectOption(label='Parked',value=-1), discord.SelectOption(label='Solo Climb',value=1), discord.SelectOption(label='Pair Climbed 1 Chain',value=2), discord.SelectOption(label='All Climed 1 Chain',value=3)]
+        await thread.send(f'**Climb**', view=Dropdown(options=climbOptions))
+        await thread.send(f'**Spotlit Climb**', view=BoolButton())
+        await thread.send(f'**TrapNotes**', view=Spinner(InType.AutoSpeakerNotes))
+        await thread.send(f'**Additional Comments**')
+        await thread.send(f'', view=Comments())
         await thread.send(f'', view=Submit())
         await thread.add_user(user)
         await interaction.followup.send(content=f"Here's your scouting form\n{thread.jump_url}")
@@ -94,11 +110,12 @@ class Dropdown(discord.ui.View):
         self.children[0].options = options
     @discord.ui.select(options=[])
     async def sel(self, interaction: discord.Interaction, select: discord.ui.Select):
-        print(select.values)
+        #print(select.values)
+        select.options = [discord.SelectOption(label=option.label, value=option.value, description=option.description, emoji=option.emoji, default=(option.value == select.values[0])) for option in select.options]
         await interaction.response.edit_message(view=self)
 
 class Spinner(discord.ui.View):
-    def __init__(self):
+    def __init__(self, tartgetVar):
         super().__init__()
         self.timeout = None
     #Incriment button
@@ -149,10 +166,9 @@ class BoolButton(discord.ui.View):
         await interaction.response.edit_message(view=self)
 
 class Comments(discord.ui.View):
-    def __init__(self, commentType=TIType.Comment):
+    def __init__(self):
         super().__init__()
         self.timeout = None
-        self.commentType = commentType
     @discord.ui.button(label='Edit', style=discord.ButtonStyle.blurple)
     async def edit(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(TextInput(message=interaction.message.content))
@@ -167,7 +183,7 @@ class TextInput(discord.ui.Modal):
         await interaction.response.edit_message(content=self.children[0].value)
 
 class Submit(discord.ui.View):
-    @discord.ui.button(label='False', style=discord.ButtonStyle.green)
+    @discord.ui.button(label='Submit Form', style=discord.ButtonStyle.green)
     async def BB(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Make sure to update the message with our updated selves
         await interaction.response.send_modal(ConfirmSubmit())

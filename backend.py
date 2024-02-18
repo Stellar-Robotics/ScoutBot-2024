@@ -2,6 +2,8 @@ import tbapy
 import sqlite3
 from keys import *
 
+tba = tbapy.TBA(tbaKey)
+
 def getConnection():
     return sqlite3.connect("matchData.db")
 
@@ -9,10 +11,11 @@ def getBotToScout(matchKey, scoutNumber):
     #with getConnection() as conn:
     #    with conn as cur:
     #        print(cur.execute(f"SELECT COUNT(MatchKey) FROM matches WHERE MatchKey = '{matchKey}'"))
-    tba = tbapy.TBA(tbaKey)
     match = tba.match(matchKey)
     compKey = match["event_key"]
     assignments = getMatchAssignments(competitionKey=compKey)
+    if not matchKey in assignments:
+        return "Target not found: invalid match key"
     matchAssignments : dict = assignments[matchKey]
     team = iter({key for key in matchAssignments if matchAssignments[key]==scoutNumber}).__next__()
     alliance = getAlliance(teamKey=team, matchKey=matchKey)
@@ -29,7 +32,6 @@ def getScoutedMatches(teamKey):
     pass
 
 def getAlliance(teamKey, matchKey):
-    tba = tbapy.TBA(tbaKey)
     match = tba.match(matchKey)
     for team in match["alliances"]["red"]["team_keys"]:
         if team == teamKey:
@@ -43,7 +45,6 @@ def getMatchAssignments(competitionKey):
     #events = [keys['key'] for keys in tba.team_events(5413)]
     #qualMatches = []
     #totalScoutedRobots = {}
-    tba = tbapy.TBA(tbaKey)
     matches = tba.event_matches(competitionKey)
     assignments = {}
     scoutedRobots = {}

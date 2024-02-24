@@ -3,6 +3,7 @@ import tbapy
 from keys import *
 from pprint import pprint
 from discord.ext import commands
+from pprint import pprint
 
 import backend
 
@@ -73,15 +74,25 @@ class ScoutButton(discord.ui.Button):
         global event
         match_list = sorted([(match['match_number'], match['key']) for match in tba.event_matches(event) if match['comp_level'] == 'qm'])
         #pprint(match_list)
+        pprint(self.label)
         lastScouted = backend.getMostRecentMatchNumber()
-        options = [discord.SelectOption(label=f'Qual {match[0]}', value=match[1], default=(match[0] == lastScouted)) for match in match_list[max(0, lastScouted-5):min(len(match_list),lastScouted+20)]]
         
-        target = backend.getBotToScout(match_list[lastScouted][1], self.label)
+        message = interaction.message
+
+        #message.edit(view=)
+        
+        targets = backend.getBotToScout(match_list[lastScouted-1][1], int(self.label))
+        pprint(targets[match_list[lastScouted-1][1]])
+        options = [discord.SelectOption(label=f'Qual {match[0]}', value=f'{match[1]} {targets[match[1]]}', default=(match[0] == lastScouted)) for match in match_list[max(0, lastScouted-5):min(len(match_list),lastScouted+20)]]
+
         thread = await interaction.channel.create_thread(name=f'Scout {self.label}', type=discord.ChannelType.private_thread)
         user = interaction.user
         
+        team = targets[match_list[lastScouted-1][1]]
+        team_name = tba.team(team)['nickname']
+
         Matches = []
-        await thread.send(f'Hi {user.nick}!\nyou are scouting {target} in', view=Dropdown(options=options))
+        await thread.send(f'Hi {user.nick}!\nyou are scouting {team}, {team_name}, in', view=MatchSel(options=options))
         await thread.send(f'# __Auto__')
         await thread.send(f'**SpeakerNotes**', view=Spinner(InType.AutoSpeakerNotes))
         await thread.send(f'**AmpNotes**', view=Spinner(InType.AutoAmpNotes))
@@ -92,8 +103,8 @@ class ScoutButton(discord.ui.Button):
         await thread.send(f'**AmpNotes**', view=Spinner(InType.TeleopAmpNotes))
         await thread.send(f'**Prioritized Amplified Speaker**', view=BoolButton())
         await thread.send(f'# __EndGame__')
-        await thread.send(f'**Climbs on same chain**', view=Spinner(InType.ClimbedWith))
-        climbOptions = [discord.SelectOption(label='No Climb',value=0), discord.SelectOption(label='Parked',value=-1), discord.SelectOption(label='Solo Climb',value=1), discord.SelectOption(label='Pair Climbed 1 Chain',value=2), discord.SelectOption(label='All Climed 1 Chain',value=3)]
+        #await thread.send(f'**Climbs on same chain**', view=Spinner(InType.ClimbedWith))
+        climbOptions = [discord.SelectOption(label='No Climb',value=f'ClimbedWith 0',default=True), discord.SelectOption(label='Parked',value=f'ClimbedWith -1'), discord.SelectOption(label='Solo Climb',value=f'ClimbedWith 1'), discord.SelectOption(label='Pair Climbed 1 Chain',value=f'ClimbedWith 2'), discord.SelectOption(label='All Climed 1 Chain',value=f'ClimbedWith 3')]
         await thread.send(f'**Climb**', view=Dropdown(options=climbOptions))
         await thread.send(f'**Spotlit Climb**', view=BoolButton())
         await thread.send(f'**TrapNotes**', view=Spinner(InType.AutoSpeakerNotes))
@@ -110,14 +121,30 @@ class Dropdown(discord.ui.View):
         self.children[0].options = options
     @discord.ui.select(options=[])
     async def sel(self, interaction: discord.Interaction, select: discord.ui.Select):
+        print(select.values)
+        options = [discord.SelectOption(label=option.label, value=option.value, description=option.description, emoji=option.emoji, default=(str(option.value) == select.values[0])) for option in select.options]
+        pprint(options)
+        select.options = options
+        await interaction.response.edit_message(view=self)
+
+class MatchSel(discord.ui.View):
+    def __init__(self, options=[discord.SelectOption(label='Qual 1', default=True)]):
+        super().__init__()
+        self.timeout = None
+        self.children[0].options = options
+    @discord.ui.select(options=[])
+    async def sel(self, interaction: discord.Interaction, select: discord.ui.Select):
         #print(select.values)
         select.options = [discord.SelectOption(label=option.label, value=option.value, description=option.description, emoji=option.emoji, default=(option.value == select.values[0])) for option in select.options]
-        await interaction.response.edit_message(view=self)
+        team = select.values[0].split()[1]
+        team_name = tba.team(team)['nickname']
+        await interaction.response.edit_message(content=f'Hi {interaction.user.nick}!\nyou are scouting {team}, {team_name}, in', view=self)
 
 class Spinner(discord.ui.View):
     def __init__(self, tartgetVar):
         super().__init__()
         self.timeout = None
+        self.tartgetVar = tartgetVar
     #Incriment button
     @discord.ui.button(label='<', style=discord.ButtonStyle.red)
     async def dec(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -129,6 +156,7 @@ class Spinner(discord.ui.View):
     #value display
     @discord.ui.button(label='0', style=discord.ButtonStyle.gray)
     async def count(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.tartgetVar = self.tartgetVar
         number = int(button.label) if button.label else 0
         message = interaction.message.content
         await interaction.response.send_modal(SpinnerOverwrite(title=f'edit {message}',spinner=self))
@@ -156,6 +184,7 @@ class SpinnerOverwrite(discord.ui.Modal):
 class BoolButton(discord.ui.View):
     @discord.ui.button(label='False', style=discord.ButtonStyle.red)
     async def BB(self, interaction: discord.Interaction, button: discord.ui.Button):
+        print('test')
         if button.style == discord.ButtonStyle.red:
             button.label = 'True'
             button.style = discord.ButtonStyle.green
@@ -183,34 +212,83 @@ class TextInput(discord.ui.Modal):
         await interaction.response.edit_message(content=self.children[0].value)
 
 class Submit(discord.ui.View):
+    def dataType(self, components):
+        components = components[0].children
+        if len(components) == 3:
+            return components[1].label
+        elif components[0].type == discord.ComponentType.select:
+            return [option for option in components[0].options if option.default][0].value
+        else:
+            return components[0].label
     @discord.ui.button(label='Submit Form', style=discord.ButtonStyle.green)
     async def BB(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Make sure to update the message with our updated selves
+        scoutData = blankData
+        messages = [(message.content, message.components) async for message in interaction.message.channel.history(limit=None)][::-1]
+        rawData = {'Scout':[], 'Auto':[], 'Teleop':[], 'EndGame':[], 'Comments':[]}
+        phase = 0
+        for message in messages:
+            if len(message[1]) < 1:
+                match message[0]:
+                    case '# __Auto__':
+                        phase = 1
+                    case '# __Teleop__':
+                        phase = 2
+                    case '# __EndGame__':
+                        phase = 3
+                    case '**Additional Comments**':
+                        phase = 4
+            else:
+                match phase:
+                    case 0:
+                        rawData['Scout'].append((message[0].split('\n')[0][2,-1], self.dataType(message[1])))
+                    case 1:
+                        rawData['Auto'].append((message[0], self.dataType(message[1])))
+                    case 2:
+                        rawData['Teleop'].append((message[0], self.dataType(message[1])))
+                    case 3:
+                        rawData['EndGame'].append((message[0], self.dataType(message[1])))
+                    case 4:
+                        rawData['Comments'].append(message[0])
+        pprint(rawData)
+        '''
+        for row in messages[0][1]:
+            value = [option for option in row.children[0].options if option.default][0].value
+            option = value.split()
+            print(messages[0][0].split('\n')[0][3:-1])
+            print(option)
+            
+        for message in messages[1:-2]:
+            for row in message[1]:
+                if len(row.children) == 3:
+                    print('spinner')
+                    print(message[0])
+                    print(row.children[1].label)
+                elif row.children[0].type ==discord.ComponentType.button:
+                    if row.children[0].label == 'Edit':
+                        print('comment')
+                        print(message[0])
+                    else:
+                        print('bool')
+                        print(message[0])
+                        print(row.children[0].label)
+                else:
+                    value = [option for option in row.children[0].options if option.default][0].value
+                    print('select')
+                    print(message[0])
+                    option = value.split()
+                    scoutData[option[0]] = option[1]
+                    print(option)
+        #pprint(messages)
+        '''
         await interaction.response.send_modal(ConfirmSubmit())
 class ConfirmSubmit(discord.ui.Modal):
     def __init__(self, label='', title='', message='', timeout=None):
         super().__init__(title=title, timeout=timeout)
+        test = f'test'
+        answer = discord.ui.TextInput(label='Confirm Input', default=test, style=discord.TextStyle.paragraph)
+        self.add_item(answer)
     #value = discord.ui.TextInput(label='Enter whole number grater than 0')
-    test = f'''
-    Auto
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    test
-    '''
-    answer = discord.ui.TextInput(label='Confirm Input', default=test, style=discord.TextStyle.paragraph)
+    
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.edit_message(content=self.value)

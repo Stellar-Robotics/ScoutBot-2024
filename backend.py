@@ -16,11 +16,11 @@ def getBotToScout(matchKey, scoutNumber):
     assignments = getMatchAssignments(competitionKey=compKey)
     if not matchKey in assignments:
         return "Target not found: invalid match key"
-    matchAssignments : dict = assignments[matchKey]
-    team = iter({key for key in matchAssignments if matchAssignments[key]==scoutNumber}).__next__()
-    alliance = getAlliance(teamKey=team, matchKey=matchKey)
-    teamNum = str.replace(team,"frc","")
-    return f"{teamNum} ({alliance})"
+    #matchAssignments : dict = assignments[matchKey]
+    team = {match:teams[scoutNumber] for match, teams in assignments.items()}
+    #alliance = getAlliance(teamKey=team, matchKey=matchKey)
+    #teamNum = str.replace(team,"frc","")
+    return team
 
 def getMostRecentMatchNumber():
     return 5
@@ -48,7 +48,7 @@ def getMatchAssignments(competitionKey):
     matches = tba.event_matches(competitionKey)
     assignments = {}
     scoutedRobots = {}
-    for team in tba.event_teams("2023ohcl"):
+    for team in tba.event_teams(competitionKey):
         if team["key"] == "frc5413":
             continue
         scoutedRobots[team["key"]] = 0
@@ -58,8 +58,8 @@ def getMatchAssignments(competitionKey):
         
         if m["comp_level"] == "qm":
             alliances = m["alliances"]
-            if not "frc5413" in alliances["red"]["team_keys"] and not "frc5413" in alliances["blue"]["team_keys"]:
-                continue
+            #if not "frc5413" in alliances["red"]["team_keys"] and not "frc5413" in alliances["blue"]["team_keys"]:
+                #continue
             #print(m["key"])
             #qualMatches.append(m)
             robots = {}
@@ -71,10 +71,10 @@ def getMatchAssignments(competitionKey):
                 if robot == "frc5413":
                     continue
                 if (scoutedRobots[robot] != lowestScoutAmnt or redScouted >= 2) and reserveScoutPos != 7:
-                    robots[robot] = reserveScoutPos
+                    robots[reserveScoutPos] = robot
                     reserveScoutPos += 1
                 else:
-                    robots[robot] = mainScoutPos
+                    robots[mainScoutPos] = robot
                     if mainScoutPos <= 4:
                         scoutedRobots[robot] += 1
                         redScouted += 1
@@ -85,10 +85,10 @@ def getMatchAssignments(competitionKey):
                 if robot == "frc5413":
                     continue
                 if (scoutedRobots[robot] != lowestScoutAmnt or blueScouted >= 2) and reserveScoutPos != 7:
-                    robots[robot] = reserveScoutPos
+                    robots[reserveScoutPos] = robot
                     reserveScoutPos += 1
                 else:
-                    robots[robot] = mainScoutPos
+                    robots[mainScoutPos] = robot
                     if mainScoutPos <= 4:
                         scoutedRobots[robot] += 1
                         blueScouted += 1

@@ -25,8 +25,28 @@ def getBotToScout(matchKey, scoutNumber):
 def getMostRecentMatchNumber():
     return 5
 
-def writeScoutData(matchKey, scoutNumber, data):
-    return True
+def writeScoutData(matchKey, scoutNumber, scoutName, data):
+    with getConnection() as conn:
+        with conn as cur:
+            q = f"""INSERT INTO matches VALUES(
+                {scoutNumber},
+                '{matchKey}',
+                '{data["team"]}',
+                {data["autoSpeakerNotes"]},
+                {data["autoAmpNotes"]},
+                {data["autoTrapNotes"]},
+                {int(data["crossedLine"])},
+                {data["teleopSpeakerNotes"]},
+                {data["teleopAmpNotes"]},
+                {data["teleopTrapNotes"]},
+                {data["climbedWith"]},
+                {int(data["didDefend"])},
+                {int(data["wasDisabled"])},
+                '{data["comments"]}',
+                '{scoutName}'
+            );"""
+            cur.execute(q)
+
 
 def getScoutedMatches(teamKey):
     pass
@@ -99,7 +119,29 @@ def getMatchAssignments(competitionKey):
     return assignments
 
 if __name__ == "__main__":
-    getBotToScout("2022isde1_qm1", 1)
+    #getBotToScout("2022isde1_qm1", 1)
+
+    data = {
+        "team": "5413",
+        "autoSpeakerNotes": 1,
+        "autoAmpNotes": 2,
+        "autoTrapNotes": 3,
+        "crossedLine": True,
+        "teleopSpeakerNotes": 1,
+        "teleopAmpNotes": 2,
+        "teleopTrapNotes": 3,
+        "climbedWith": 0,
+        "didDefend": False,
+        "wasDisabled": False,
+        "comments": "It was a robot.",
+        "scoutName": "CJKeller03"
+    }
+
+    #writeScoutData("ohcl2024", 0, "Caleb Keller", data)
+
+    with getConnection() as conn:
+        with conn as cur:
+            print(cur.execute("SELECT * FROM matches").fetchall())
 
     exit()
 

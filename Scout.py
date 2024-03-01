@@ -4,6 +4,7 @@ from keys import *
 from pprint import pprint
 from discord.ext import commands
 from pprint import pprint
+import re
 
 import backend
 
@@ -241,7 +242,10 @@ class Submit(discord.ui.View):
             else:
                 match phase:
                     case 0:
-                        rawData['Scout'].append((message[0].split('\n')[0][2,-1], self.dataType(message[1])))
+                        rawData['Scout'].append(message[0].split('\n')[0][2:-1])
+                        rawData['Scout'].append(self.dataType(message[1]))
+                        rawData['Scout'].append(re.search(r"you are scouting (frc[0-9]+),", message[0])[1])
+                        
                     case 1:
                         rawData['Auto'].append((message[0], self.dataType(message[1])))
                     case 2:
@@ -281,6 +285,7 @@ class Submit(discord.ui.View):
                     print(option)
         #pprint(messages)
         '''
+        backend.writeScoutData(0,rawData)
         await interaction.response.send_modal(ConfirmSubmit())
 class ConfirmSubmit(discord.ui.Modal):
     def __init__(self, label='', title='', message='', timeout=None):

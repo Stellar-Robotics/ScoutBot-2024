@@ -1,7 +1,9 @@
 import tbapy
 import sqlite3
 from keys import *
+import pandas as pd
 
+pd.set_option('display.max_columns', 500)
 tba = tbapy.TBA(tbaKey)
 
 def getConnection():
@@ -25,12 +27,39 @@ def getBotToScout(matchKey, scoutNumber):
 def getMostRecentMatchNumber():
     return 5
 
-def writeScoutData(matchKey, scoutNumber, scoutName, data):
+def writeScoutData(scoutNumber, rawData, useRawData = False):
+
+    def getVal(key, iterable):
+        return filter(lambda x: x[0] == key, iterable).__next__()[1]
+
+    if useRawData:
+        data = rawData
+    else:
+        data = {
+            "scoutName": rawData["Scout"][0],
+            "matchKey": rawData["Scout"][1].split(" ")[0],
+            "team": rawData["Scout"][2],
+            "autoSpeakerNotes": getVal("**SpeakerNotes**", rawData["Auto"]),
+            "autoAmpNotes": getVal("**AmpNotes**", rawData["Auto"]),
+            "autoTrapNotes": getVal("**TrapNotes**", rawData["Auto"]),
+            "crossedLine": getVal("**CrossedLine**", rawData["Auto"]) == "True",
+            "teleopSpeakerNotes": getVal("**SpeakerNotes**", rawData["Teleop"]),
+            "teleopAmpNotes": getVal("**AmpNotes**", rawData["Teleop"]),
+            "teleopTrapNotes": getVal("**TrapNotes**", rawData["EndGame"]),
+            "climbedWith": getVal("**Climb**", rawData["EndGame"]).split(" ")[1],
+            "spotlit": getVal("**Spotlit Climb**", rawData["EndGame"]) == "True",
+            "wasDisabled": 0,
+            "didDefend": 0,
+            "comments": rawData["Comments"][0]
+        }
+    
+        #getVal("**WasDisabled**", rawData["EndGame"]) == "True",
+
     with getConnection() as conn:
         with conn as cur:
             q = f"""INSERT INTO matches VALUES(
                 {scoutNumber},
-                '{matchKey}',
+                '{data["matchKey"]}',
                 '{data["team"]}',
                 {data["autoSpeakerNotes"]},
                 {data["autoAmpNotes"]},
@@ -40,10 +69,11 @@ def writeScoutData(matchKey, scoutNumber, scoutName, data):
                 {data["teleopAmpNotes"]},
                 {data["teleopTrapNotes"]},
                 {data["climbedWith"]},
+                {int(data["spotlit"])},
                 {int(data["didDefend"])},
                 {int(data["wasDisabled"])},
                 '{data["comments"]}',
-                '{scoutName}'
+                '{data["scoutName"]}'
             );"""
             cur.execute(q)
 
@@ -122,6 +152,7 @@ if __name__ == "__main__":
     #getBotToScout("2022isde1_qm1", 1)
 
     data = {
+        "matchKey": "ohcl2024",
         "team": "5413",
         "autoSpeakerNotes": 1,
         "autoAmpNotes": 2,
@@ -131,17 +162,20 @@ if __name__ == "__main__":
         "teleopAmpNotes": 2,
         "teleopTrapNotes": 3,
         "climbedWith": 0,
+        "spotlit": 0,
         "didDefend": False,
         "wasDisabled": False,
         "comments": "It was a robot.",
         "scoutName": "CJKeller03"
     }
 
-    #writeScoutData("ohcl2024", 0, "Caleb Keller", data)
+    #writeScoutData(0, data, True)
 
     with getConnection() as conn:
         with conn as cur:
-            print(cur.execute("SELECT * FROM matches").fetchall())
+    #        #cur.execute("DROP TABLE matches")
+    #        #print(cur.execute("SELECT * FROM matches").fetchall())
+            print(pd.read_sql_query("SELECT * FROM matches", cur))
 
     exit()
 
@@ -164,6 +198,7 @@ if __name__ == "__main__":
                     TeleopTrapNotes INT,
 
                     ClimbedWith INT,
+                    Spotlit INT,
 
                     DidDefend INT,
                     WasDisabled INT,

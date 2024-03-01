@@ -2,6 +2,7 @@ import tbapy
 import sqlite3
 from keys import *
 import pandas as pd
+import re
 
 pd.set_option('display.max_columns', 500)
 tba = tbapy.TBA(tbaKey)
@@ -25,7 +26,11 @@ def getBotToScout(matchKey, scoutNumber):
     return team
 
 def getMostRecentMatchNumber():
-    return 5
+    with getConnection() as conn:
+        with conn as cur:
+            val = cur.execute("SELECT MAX(matchNumber) FROM matches").fetchone()[0]
+            return val + 1 if val is not None else 1
+        
 
 def writeScoutData(scoutNumber, rawData, useRawData = False):
 
@@ -60,6 +65,7 @@ def writeScoutData(scoutNumber, rawData, useRawData = False):
             q = f"""INSERT INTO matches VALUES(
                 {scoutNumber},
                 '{data["matchKey"]}',
+                {int(re.search(r"[0-9]{1,2}$", data["matchKey"])[0])},
                 '{data["team"]}',
                 {data["autoSpeakerNotes"]},
                 {data["autoAmpNotes"]},
@@ -151,8 +157,12 @@ def getMatchAssignments(competitionKey):
 if __name__ == "__main__":
     #getBotToScout("2022isde1_qm1", 1)
 
+    #print(getMostRecentMatchNumber())
+    #exit()
+
     data = {
         "matchKey": "ohcl2024",
+        "matchNumber": 5,
         "team": "5413",
         "autoSpeakerNotes": 1,
         "autoAmpNotes": 2,
@@ -173,7 +183,7 @@ if __name__ == "__main__":
 
     with getConnection() as conn:
         with conn as cur:
-    #        #cur.execute("DROP TABLE matches")
+            #cur.execute("DROP TABLE matches")
     #        #print(cur.execute("SELECT * FROM matches").fetchall())
             print(pd.read_sql_query("SELECT * FROM matches", cur))
 
@@ -185,6 +195,7 @@ if __name__ == "__main__":
                 CREATE TABLE matches(
                     ScoutNumber INT,
                     MatchKey CHAR(15),
+                    MatchNumber INT,
 
                     TeamKey CHAR(8),
 
